@@ -1,82 +1,92 @@
-const express = require('express')
-const app = express()
-const cors = require('cors')
+// const { json } = require('express');
+const express = require('express');
+const app = express();
+var morgan = require('morgan');
+const cors = require('cors');
+const PhonebookEntry = require('./phonebook')
 
-app.use(express.json())
-app.use(express.static('build'))
-app.use(cors())
+app.use(cors());
+app.use(express.json());
+app.use(morgan('combined'));
+app.use(express.json());
+app.use(express.static('build'));
 
-let notes = [
-    {
-      id: 1,
-      content: "HTML is easy",
-      important: true
+let persons = [
+    { 
+      "id": 1,
+      "name": "Arto Hellas", 
+      "number": "040-123456"
     },
-    {
-      id: 2,
-      content: "Browser can execute only JavaScript",
-      important: false
+    { 
+      "id": 2,
+      "name": "Ada Lovelace", 
+      "number": "39-44-5323523"
     },
-    {
-      id: 3,
-      content: "GET and POST are the most important methods of HTTP protocol",
-      important: true
+    { 
+      "id": 3,
+      "name": "Dan Abramov", 
+      "number": "12-43-234345"
+    },
+    { 
+      "id": 4,
+      "name": "Mary Poppendieck", 
+      "number": "39-23-6423122"
     }
-  ]
+]
 
-  app.get('/', (request, response) => {
-    response.send('<h1>Hello World!</h1>')
-  })
-  
-  app.get('/api/notes', (request, response) => {
-    response.json(notes)
-  })
+app.get('/api/persons', (request, response) => {
+    const res = JSON.stringify(persons, null, 2);
+    response.setHeader('Content-Type', 'application/json');
+    response.send(res);
+})
 
-  app.get('/api/notes/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const note = notes.find(note => note.id === id)
-    if (note) {
-        response.json(note)
-      } else {
-        response.status(404).end()
-      }
-  })
+app.get('/info', (request, response) => {
+    const currenttime = new Date();
+    let res = `Phonebook has info for ${persons.length} people\n\n${currenttime}`;
+    response.setHeader('Content-Type', 'text/plain');
+    response.send(res);
+})
 
-  app.delete('/api/notes/:id', (request, response) => {
-    const id = Number(request.params.id)
-    notes = notes.filter(note => note.id !== id)
-  
-    response.status(204).end()
-  })
+app.get('/api/persons/:id', (request, response) => {
+    const id = Number(request.params.id);
+    const person = persons.find(person => person.id === id);
 
-  const generateId = () => {
-    const maxId = notes.length > 0
-      ? Math.max(...notes.map(n => n.id))
-      : 0
-    return maxId + 1
-  }
-  
-  app.post('/api/notes', (request, response) => {
-    const body = request.body
-  
-    if (!body.content) {
-      return response.status(400).json({ 
-        error: 'content missing' 
-      })
+    if(person) {
+        response.json(person);
     }
-  
-    const note = {
-      content: body.content,
-      important: body.important || false,
-      id: generateId(),
+    else {
+        response.status(404).end();
     }
-  
-    notes = notes.concat(note)
-  
-    response.json(note)
-  })
-  
-  const PORT = process.env.PORT || 3001
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-  })
+})
+
+app.delete('/api/persons/:id', (request, response) => {
+    const id = Number(request.params.id);
+    persons = persons.filter(person => person.id !== id)
+
+    response.status(204).end();
+})
+
+app.post('/api/persons', (request, response) => {
+    const id = Math.floor(Math.random() * 1000000000);
+    const newPerson = {
+        id: id,
+        name: request.body.name,
+        number: request.body.number
+    };
+    if(newPerson.name === "") {
+        response.status(400).json({ error: 'name must not be empty' });
+    } else if(newPerson.number === "") {
+        response.status(400).json({ error: 'number must not be empty' });
+    } else if(persons.some(person => person.name === newPerson.name)) {
+        response.status(400).json({ error: 'name must be unique' });
+    }
+    else {
+        persons.push(newPerson);
+        response.status(201).json(newPerson);
+    }
+})
+
+const PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+})
